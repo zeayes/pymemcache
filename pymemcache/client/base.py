@@ -824,6 +824,9 @@ class PooledClient(object):
                       be called to create a lock or sempahore that can
                       protect the pool from concurrent access (for example a
                       eventlet lock or semaphore could be used instead)
+      obj_idle_timeout: the max idle time of a connection can be reused,
+                        by default this is 60 seconds, 0 means idle connection
+                        never expired. Expired connections will be closed before reused.
 
     Further arguments are interpreted as for :py:class:`.Client` constructor.
     """
@@ -840,6 +843,7 @@ class PooledClient(object):
                  key_prefix=b'',
                  max_pool_size=None,
                  lock_generator=None,
+                 obj_idle_timeout=None,
                  default_noreply=True):
         self.server = server
         self.serializer = serializer
@@ -859,7 +863,8 @@ class PooledClient(object):
             self._create_client,
             after_remove=lambda client: client.close(),
             max_size=max_pool_size,
-            lock_generator=lock_generator)
+            lock_generator=lock_generator,
+            obj_idle_timeout=obj_idle_timeout)
 
     def check_key(self, key):
         """Checks key and add key_prefix."""

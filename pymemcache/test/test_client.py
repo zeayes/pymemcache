@@ -774,6 +774,15 @@ class TestPrefixedPooledClient(TestPrefixedClient):
         return client
 
 
+class TestIdlePooledClient(ClientTestMixin, unittest.TestCase):
+    def make_client(self, mock_socket_values, **kwargs):
+        mock_client = Client(None, **kwargs)
+        mock_client.sock = MockSocket(list(mock_socket_values))
+        client = PooledClient(None, obj_idle_timeout=3, **kwargs)
+        client.client_pool = pool.ObjectPool(lambda: mock_client, obj_idle_timeout=3)
+        return client
+
+
 @pytest.mark.unit()
 class TestRetryOnEINTR(unittest.TestCase):
     def make_client(self, values):

@@ -36,9 +36,13 @@ class ObjectPool(object):
             self._lock = lock_generator()
         self._after_remove = after_remove
         max_size = max_size or 2 ** 31
-        self.obj_idle_timeout = obj_idle_timeout or 60
         if not isinstance(max_size, six.integer_types) or max_size < 0:
             raise ValueError('"max_size" must be a positive integer')
+        if obj_idle_timeout is None:
+            obj_idle_timeout = 60
+        self.obj_idle_timeout = obj_idle_timeout
+        if not isinstance(self.obj_idle_timeout, six.integer_types) or self.obj_idle_timeout < 0:
+            raise ValueError('"obj_idle_timeout" must be a positive integer')
         self.max_size = max_size
 
     @property
@@ -75,10 +79,11 @@ class ObjectPool(object):
                 self._used_objs.append(obj)
                 return obj
             obj = None
+            now = time.time()
+            # FIFO try to remove timeout idle objects
             while self._free_objs:
-                # FIFO try to remove timeout idle objects
                 idle_obj = self._free_objs.popleft()
-                if idle_obj._idle_at + self.obj_idle_timeout > time.time():
+                if not self.obj_idle_timeout or idle_obj._idle_at + self.obj_idle_timeout > now:
                     obj = idle_obj
                     break
                 self._after_remove(idle_obj)
@@ -103,7 +108,7 @@ class ObjectPool(object):
         with self._lock:
             try:
                 self._used_objs.remove(obj)
-                setattr(obj, '_idle_at', time.time())
+                obj._idle_at = time.time()
                 self._free_objs.append(obj)
             except ValueError:
                 if not silent:
